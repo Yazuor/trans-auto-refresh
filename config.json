@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": enabled,
   "latestVersion": "2.2",
-  "message": "Skrypt tymczasowo wyłączony"
+  "message": "Skrypt działa"
 }
