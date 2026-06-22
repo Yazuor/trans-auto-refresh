@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "latestVersion": "2.19",
-  "message": "Witaj użytkowniku"
+  "message": "Skrypt tymczasowo wyłączony"
 }
