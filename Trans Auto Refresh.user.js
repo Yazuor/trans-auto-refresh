@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Trans Auto Refresh
 // @namespace    Trans
-// @version      2.19
+// @version      2.20
 // @description  Automatyczne odświeżanie frachtów z panelem ustawień
 // @match        https://platform.trans.eu/freights/sent*
 // @updateURL    https://raw.githubusercontent.com/Yazuor/trans-auto-refresh/refs/heads/main/Trans%20Auto%20Refresh.user.js
@@ -14,7 +14,7 @@
 
     // Wersja produkcyjna sprawdzana przez GitHub Remote Config.
     // Trzymaj tę numerację spójnie z polem latestVersion w config.json.
-    const SCRIPT_VERSION = "2.19";
+    const SCRIPT_VERSION = "2.20";
 
     // Wklej tu pełny link RAW do config.json z GitHuba.
     // Przykład: https://raw.githubusercontent.com/user/repo/main/config.json
@@ -23,6 +23,10 @@
 
     // Maksymalny czas oczekiwania na GitHub config. Po timeout skrypt działa dalej.
     const REMOTE_CONFIG_TIMEOUT = 5000;
+
+    // Jak często działający skrypt ponownie sprawdza GitHub config.
+    // Dzięki temu enabled=false zatrzyma też kartę, która już pracuje.
+    const REMOTE_CONFIG_RUNTIME_CHECK_INTERVAL = 10 * 1000;
 
     // Co ile startuje pełny cykl po zakończeniu poprzedniego cyklu.
     // Przy limicie duplikatów krótki cykl dawkuje podobne oferty zamiast wrzucać całą paczkę naraz.
@@ -138,6 +142,11 @@
     let dashboardMinimized = false;
     let scriptSettings =
         readScriptSettings();
+    let remoteConfigAllowed = true;
+    let remoteConfigLastCheckedAt = 0;
+    let lastRemoteConfigMessage = "";
+    let lastRemoteVersionNotice = "";
+    let remoteConfigDisabledLogged = false;
 
     if (window.transRefreshRunning) {
         console.log("Trans Auto Refresh już działa");
@@ -1127,10 +1136,15 @@
         }
 
         if (config.message) {
-            console.info(
-                "Remote Config - wiadomość administratora:",
-                config.message
-            );
+            if (config.message !== lastRemoteConfigMessage) {
+                console.info(
+                    "Remote Config - wiadomość administratora:",
+                    config.message
+                );
+                lastRemoteConfigMessage = config.message;
+            }
+        } else {
+            lastRemoteConfigMessage = "";
         }
 
         const notices = [];
@@ -1139,9 +1153,12 @@
             config.latestVersion &&
             isRemoteVersionNewer(config.latestVersion)
         ) {
-            console.warn(
-                `Remote Config - dostępna nowa wersja. Aktualna: ${SCRIPT_VERSION}, najnowsza: ${config.latestVersion}`
-            );
+            if (config.latestVersion !== lastRemoteVersionNotice) {
+                console.warn(
+                    `Remote Config - dostępna nowa wersja. Aktualna: ${SCRIPT_VERSION}, najnowsza: ${config.latestVersion}`
+                );
+                lastRemoteVersionNotice = config.latestVersion;
+            }
 
             notices.push(`
                 <div style="color: #fde68a; font-weight: 700;">
@@ -1161,13 +1178,72 @@
         }
 
         if (config.enabled === false) {
-            console.warn(
-                "Remote Config - skrypt wyłączony przez administratora."
-            );
+            if (!remoteConfigDisabledLogged) {
+                console.warn(
+                    "Remote Config - skrypt wyłączony przez administratora."
+                );
+                remoteConfigDisabledLogged = true;
+            }
 
             showRemoteDisabledDashboard(config.message);
 
             return false;
+        }
+
+        return true;
+    }
+
+    async function refreshRemoteConfigStatus(force = false) {
+        const now =
+            Date.now();
+
+        if (
+            !force &&
+            now - remoteConfigLastCheckedAt <
+                REMOTE_CONFIG_RUNTIME_CHECK_INTERVAL
+        ) {
+            return remoteConfigAllowed;
+        }
+
+        remoteConfigLastCheckedAt = now;
+
+        const remoteConfig =
+            await fetchRemoteConfig();
+
+        remoteConfigAllowed =
+            applyRemoteConfig(remoteConfig);
+
+        return remoteConfigAllowed;
+    }
+
+    function createRemoteConfigDisabledError() {
+        return new Error("REMOTE_CONFIG_DISABLED");
+    }
+
+    async function ensureRemoteConfigStillEnabled(force = false) {
+        if (!await refreshRemoteConfigStatus(force)) {
+            throw createRemoteConfigDisabledError();
+        }
+    }
+
+    async function sleepWithRemoteConfigChecks(ms) {
+        const endAt =
+            Date.now() + ms;
+
+        while (Date.now() < endAt) {
+            const remaining =
+                endAt - Date.now();
+
+            await sleep(
+                Math.min(
+                    remaining,
+                    REMOTE_CONFIG_RUNTIME_CHECK_INTERVAL
+                )
+            );
+
+            if (!await refreshRemoteConfigStatus(true)) {
+                return false;
+            }
         }
 
         return true;
@@ -2684,6 +2760,8 @@
 
         for (let i = 0; i < refreshQueue.length; i++) {
 
+            await ensureRemoteConfigStillEnabled();
+
             const currentPublication = refreshQueue[i];
             const pubId = currentPublication.id;
             const nextCursor =
@@ -2751,7 +2829,9 @@
                         `429 Too Many Requests -> pauza ${Math.round(pauseMs / 1000)} s i kontynuacja tego samego cyklu`
                     );
 
-                    await sleep(pauseMs);
+                    if (!await sleepWithRemoteConfigChecks(pauseMs)) {
+                        throw createRemoteConfigDisabledError();
+                    }
 
                     i--;
 
@@ -2933,7 +3013,9 @@
 
             processedSincePreventivePause++;
 
-            await sleep(refreshDelay); //"Prędkość wysyłania zapytań"//
+            if (!await sleepWithRemoteConfigChecks(refreshDelay)) {
+                throw createRemoteConfigDisabledError();
+            } //"Prędkość wysyłania zapytań"//
 
             if (
                 processedSincePreventivePause >=
@@ -2944,7 +3026,9 @@
                     `Pauza prewencyjna ${Math.round(preventiveBatchPause / 1000)} s po ${processedSincePreventivePause} ofertach`
                 );
 
-                await sleep(preventiveBatchPause);
+                if (!await sleepWithRemoteConfigChecks(preventiveBatchPause)) {
+                    throw createRemoteConfigDisabledError();
+                }
 
                 processedSincePreventivePause = 0;
             }
@@ -3026,11 +3110,15 @@
 
     async function startRefreshLoop() {
 
-        await new Promise(
-            r => setTimeout(r, 5000)
-        );
+        if (!await sleepWithRemoteConfigChecks(5000)) {
+            return;
+        }
 
         while (true) {
+
+            if (!await refreshRemoteConfigStatus(true)) {
+                break;
+            }
 
             cycleCounter++;
 
@@ -3092,6 +3180,16 @@
                     break;
                 }
 
+                if (
+                    e.message === "REMOTE_CONFIG_DISABLED"
+                ) {
+                    console.warn(
+                        "Remote Config - zatrzymano działający skrypt."
+                    );
+
+                    break;
+                }
+
                 console.error(
                     "Błąd głównego cyklu:",
                     e
@@ -3148,21 +3246,15 @@
                 )
             });
 
-            await new Promise(
-                r => setTimeout(
-                    r,
-                    refreshInterval
-                )
-            );
+            if (!await sleepWithRemoteConfigChecks(refreshInterval)) {
+                break;
+            }
         }
 
     }
 
     async function bootstrap() {
-        const remoteConfig =
-            await fetchRemoteConfig();
-
-        if (!applyRemoteConfig(remoteConfig)) {
+        if (!await refreshRemoteConfigStatus(true)) {
             return;
         }
 
