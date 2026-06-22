@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Trans Auto Refresh
 // @namespace    Trans
-// @version      2.18
+// @version      2.19
 // @description  Automatyczne odświeżanie frachtów z panelem ustawień
 // @match        https://platform.trans.eu/freights/sent*
 // @updateURL    https://raw.githubusercontent.com/Yazuor/trans-auto-refresh/refs/heads/main/Trans%20Auto%20Refresh.user.js
@@ -14,7 +14,7 @@
 
     // Wersja produkcyjna sprawdzana przez GitHub Remote Config.
     // Trzymaj tę numerację spójnie z polem latestVersion w config.json.
-    const SCRIPT_VERSION = "2.18";
+    const SCRIPT_VERSION = "2.19";
 
     // Wklej tu pełny link RAW do config.json z GitHuba.
     // Przykład: https://raw.githubusercontent.com/user/repo/main/config.json
@@ -1126,18 +1126,14 @@
             return true;
         }
 
-        const notices = [];
-
         if (config.message) {
             console.info(
                 "Remote Config - wiadomość administratora:",
                 config.message
             );
-
-            notices.push(
-                `<div>${escapeHtml(config.message)}</div>`
-            );
         }
+
+        const notices = [];
 
         if (
             config.latestVersion &&
@@ -1148,7 +1144,7 @@
             );
 
             notices.push(`
-                <div style="margin-top: ${notices.length ? "6px" : "0"}; color: #fde68a; font-weight: 700;">
+                <div style="color: #fde68a; font-weight: 700;">
                     DOSTĘPNA NOWA WERSJA
                 </div>
                 <div style="color: #fef3c7;">
