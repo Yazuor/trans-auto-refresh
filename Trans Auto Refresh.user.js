@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Trans Auto Refresh
 // @namespace    Trans
-// @version      2.21
+// @version      2.22
 // @description  Automatyczne odświeżanie frachtów z panelem ustawień
 // @match        https://platform.trans.eu/freights/sent*
 // @updateURL    https://raw.githubusercontent.com/Yazuor/trans-auto-refresh/refs/heads/main/Trans%20Auto%20Refresh.user.js
@@ -14,7 +14,7 @@
 
     // Wersja produkcyjna sprawdzana przez GitHub Remote Config.
     // Trzymaj tę numerację spójnie z polem latestVersion w config.json.
-    const SCRIPT_VERSION = "2.21";
+    const SCRIPT_VERSION = "2.22";
 
     // Wklej tu pełny link RAW do config.json z GitHuba.
     // Przykład: https://raw.githubusercontent.com/user/repo/main/config.json
@@ -542,6 +542,7 @@
                 <strong style="color: #fecaca; font-size: 13px;">LOGI BŁĘDÓW</strong>
                 <div style="display: flex; gap: 6px;">
                     <button data-error-log-action="clear" type="button" style="padding: 4px 8px; color: #e5e7eb; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16); border-radius: 6px; cursor: pointer;">Wyczyść</button>
+                    <button data-error-log-action="copy" type="button" style="padding: 4px 8px; color: #e5e7eb; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16); border-radius: 6px; cursor: pointer;">Kopiuj</button>
                     <button data-error-log-action="close" type="button" style="width: 22px; height: 22px; color: #d1d5db; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 5px; cursor: pointer;">×</button>
                 </div>
             </div>
@@ -574,6 +575,30 @@
                     rows.innerHTML =
                         renderErrorLogRows();
                 }
+            });
+
+        panel
+            .querySelector('[data-error-log-action="copy"]')
+            ?.addEventListener("click", async event => {
+                const button =
+                    event.currentTarget;
+                const originalLabel =
+                    button.textContent;
+
+                button.disabled = true;
+                button.textContent = "Kopiuję...";
+
+                const copied =
+                    await copyErrorLogToClipboard();
+
+                button.textContent =
+                    copied ? "Skopiowano" : "Błąd kopiowania";
+
+                setTimeout(() => {
+                    button.textContent =
+                        originalLabel;
+                    button.disabled = false;
+                }, 1400);
             });
 
         (document.body || document.documentElement).appendChild(panel);
@@ -1469,6 +1494,108 @@
             entry,
             ...readErrorLog()
         ]);
+    }
+
+    function formatErrorLogForCopy() {
+        const entries =
+            readErrorLog();
+
+        if (!entries.length) {
+            return "Trans Auto Refresh - logi błędów\nBrak błędów w logach.";
+        }
+
+        return [
+            `Trans Auto Refresh - logi błędów (${entries.length}/${ERROR_LOG_LIMIT})`,
+            `Wygenerowano: ${formatErrorLogDate(Date.now())}`,
+            "",
+            ...entries.map((entry, index) => {
+                const lines = [
+                    `${index + 1}. ${entry.code} | ${entry.description} | ${formatErrorLogDate(entry.at)}`
+                ];
+
+                if (entry.publicationId) {
+                    lines.push(
+                        `ID publikacji: ${entry.publicationId}`
+                    );
+                }
+
+                if (entry.cycle) {
+                    lines.push(
+                        `Cykl: ${entry.cycle}`
+                    );
+                }
+
+                return lines.join("\n");
+            })
+        ].join("\n\n");
+    }
+
+    function copyTextUsingTextarea(text) {
+        const textarea =
+            document.createElement("textarea");
+
+        textarea.value = text;
+        textarea.setAttribute(
+            "readonly",
+            "readonly"
+        );
+
+        Object.assign(textarea.style, {
+            position: "fixed",
+            top: "0",
+            left: "0",
+            width: "1px",
+            height: "1px",
+            opacity: "0",
+            pointerEvents: "none"
+        });
+
+        (document.body || document.documentElement).appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(
+            0,
+            textarea.value.length
+        );
+
+        try {
+            return document.execCommand("copy");
+        } catch (error) {
+            console.warn(
+                "Nie udało się skopiować logów błędów.",
+                error
+            );
+
+            return false;
+        } finally {
+            textarea.remove();
+        }
+    }
+
+    async function copyTextToClipboard(text) {
+        if (
+            navigator.clipboard &&
+            navigator.clipboard.writeText
+        ) {
+            try {
+                await navigator.clipboard.writeText(text);
+
+                return true;
+            } catch (error) {
+                console.warn(
+                    "Clipboard API niedostępne, używam metody awaryjnej.",
+                    error
+                );
+            }
+        }
+
+        return copyTextUsingTextarea(text);
+    }
+
+    async function copyErrorLogToClipboard() {
+        return copyTextToClipboard(
+            formatErrorLogForCopy()
+        );
     }
 
     function toNumber(value, fallback, min, max) {
