@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Trans Auto Refresh
 // @namespace    Trans
-// @version      2.20
+// @version      2.21
 // @description  Automatyczne odświeżanie frachtów z panelem ustawień
 // @match        https://platform.trans.eu/freights/sent*
 // @updateURL    https://raw.githubusercontent.com/Yazuor/trans-auto-refresh/refs/heads/main/Trans%20Auto%20Refresh.user.js
@@ -14,7 +14,7 @@
 
     // Wersja produkcyjna sprawdzana przez GitHub Remote Config.
     // Trzymaj tę numerację spójnie z polem latestVersion w config.json.
-    const SCRIPT_VERSION = "2.20";
+    const SCRIPT_VERSION = "2.21";
 
     // Wklej tu pełny link RAW do config.json z GitHuba.
     // Przykład: https://raw.githubusercontent.com/user/repo/main/config.json
@@ -147,6 +147,7 @@
     let lastRemoteConfigMessage = "";
     let lastRemoteVersionNotice = "";
     let remoteConfigDisabledLogged = false;
+    let scriptStoppedPermanently = false;
 
     if (window.transRefreshRunning) {
         console.log("Trans Auto Refresh już działa");
@@ -264,7 +265,16 @@
 
         (document.body || document.documentElement).appendChild(panel);
 
-        setDashboardContent(`
+        setDashboardContent(
+            getDefaultDashboardContent(),
+            panel
+        );
+
+        return panel;
+    }
+
+    function getDefaultDashboardContent() {
+        return `
             <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;">
                 <span>Oferty:</span><strong data-value="offers">0</strong>
                 <span>Odświeżono:</span><strong data-value="refreshed">0</strong>
@@ -274,9 +284,7 @@
                 <span>Czas cyklu:</span><strong data-value="duration">-- min -- s</strong>
                 <span data-next-start-label>Następny start:</span><strong data-value="nextStart">--:--:--</strong>
             </div>
-        `, panel);
-
-        return panel;
+        `;
     }
 
     function setDashboardContent(html, panel = dashboard) {
@@ -970,6 +978,22 @@
         `);
     }
 
+    function restoreDashboardAfterRemoteEnable() {
+        if (!dashboard) {
+            return;
+        }
+
+        dashboard.style.background = "rgba(61, 66, 74, 0.97)";
+        dashboard.style.borderColor = "#4ade80";
+        dashboard.style.boxShadow =
+            "0 10px 30px rgba(0, 0, 0, 0.4), 0 0 18px rgba(74, 222, 128, 0.55), 0 0 4px rgba(74, 222, 128, 0.9)";
+
+        setRemoteConfigNotice("");
+        setDashboardContent(
+            getDefaultDashboardContent()
+        );
+    }
+
     function getVersionParts(version) {
         const parts =
             String(version || "")
@@ -1147,6 +1171,18 @@
             lastRemoteConfigMessage = "";
         }
 
+        if (
+            config.enabled !== false &&
+            remoteConfigAllowed === false
+        ) {
+            console.warn(
+                "Remote Config - skrypt ponownie włączony."
+            );
+
+            remoteConfigDisabledLogged = false;
+            restoreDashboardAfterRemoteEnable();
+        }
+
         const notices = [];
 
         if (
@@ -1175,6 +1211,8 @@
             setRemoteConfigNotice(
                 notices.join("")
             );
+        } else if (config.enabled !== false) {
+            setRemoteConfigNotice("");
         }
 
         if (config.enabled === false) {
@@ -1209,6 +1247,10 @@
 
         const remoteConfig =
             await fetchRemoteConfig();
+
+        if (!remoteConfig) {
+            return remoteConfigAllowed;
+        }
 
         remoteConfigAllowed =
             applyRemoteConfig(remoteConfig);
@@ -1247,6 +1289,18 @@
         }
 
         return true;
+    }
+
+    async function waitForRemoteConfigEnabled() {
+        while (!scriptStoppedPermanently) {
+            if (await refreshRemoteConfigStatus(true)) {
+                return true;
+            }
+
+            await sleep(REMOTE_CONFIG_RUNTIME_CHECK_INTERVAL);
+        }
+
+        return false;
     }
 
     function showTokenExpiredDashboard() {
@@ -3175,6 +3229,7 @@
                         "Token wygasł - odśwież stronę i uruchom ponownie"
                     );
 
+                    scriptStoppedPermanently = true;
                     showTokenExpiredDashboard();
 
                     break;
@@ -3254,11 +3309,17 @@
     }
 
     async function bootstrap() {
-        if (!await refreshRemoteConfigStatus(true)) {
-            return;
-        }
+        while (!scriptStoppedPermanently) {
+            if (!await waitForRemoteConfigEnabled()) {
+                return;
+            }
 
-        await startWithCrossTabLock();
+            await startWithCrossTabLock();
+
+            if (!scriptStoppedPermanently) {
+                await sleep(REMOTE_CONFIG_RUNTIME_CHECK_INTERVAL);
+            }
+        }
     }
 
     bootstrap().catch(e => {
