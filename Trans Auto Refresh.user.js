@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Trans Auto Refresh
 // @namespace    Trans
-// @version      2.24
+// @version      2.25
 // @description  Automatyczne odświeżanie ofert Trans.eu
 // @match        https://platform.trans.eu/freights/sent*
 // @updateURL    https://raw.githubusercontent.com/Yazuor/trans-auto-refresh/refs/heads/main/Trans%20Auto%20Refresh.user.js
