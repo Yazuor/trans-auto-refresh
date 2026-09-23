@@ -2,7 +2,7 @@
 
 Automatyczne odswiezanie ofert frachtowych w Trans.eu przez Tampermonkey.
 
-Aktualna wersja: **2.43**
+Aktualna wersja: **2.45**
 
 ## Instalacja
 
@@ -68,7 +68,7 @@ Przykladowa konfiguracja:
 ```json
 {
   "enabled": true,
-  "latestVersion": "2.43",
+  "latestVersion": "2.45",
   "message": ""
 }
 ```
