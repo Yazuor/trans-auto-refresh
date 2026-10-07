@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Trans Auto Refresh
 // @namespace    Trans
-// @version      2.47
+// @version      4.48
 // @description  Automatyczne odświeżanie ofert
 // @match        https://platform.trans.eu/freights/sent*
 // @updateURL    https://raw.githubusercontent.com/Yazuor/trans-auto-refresh/refs/heads/main/Trans%20Auto%20Refresh.user.js
@@ -11,7 +11,7 @@
 
 (() => {
     const payload = [
-        "KGZ1bmN0aW9uICgpIHsKICAgICd1c2Ugc3RyaWN0JzsKCiAgICBjb25zdCBTQ1JJUFRfVkVSU0lPTiA9ICIyLjQ2IjsKCiAgICBjb25zdCBSRU1PVEVfQ09O",
+        "KGZ1bmN0aW9uICgpIHsKICAgICd1c2Ugc3RyaWN0JzsKCiAgICBjb25zdCBTQ1JJUFRfVkVSU0lPTiA9ICI0LjQ4IjsKCiAgICBjb25zdCBSRU1PVEVfQ09O",
         "RklHX1VSTCA9ICJodHRwczovL3Jhdy5naXRodWJ1c2VyY29udGVudC5jb20vWWF6dW9yL3RyYW5zLWF1dG8tcmVmcmVzaC9yZWZzL2hlYWRzL21haW4vY29u",
         "ZmlnLmpzb24iOwoKICAgIGNvbnN0IFJFTU9URV9DT05GSUdfVElNRU9VVCA9IDUwMDA7CgogICAgY29uc3QgUkVNT1RFX0NPTkZJR19SVU5USU1FX0NIRUNL",
         "X0lOVEVSVkFMID0gMiAqIDYwICogNjAgKiAxMDAwOwoKICAgIGNvbnN0IFJFRlJFU0hfSU5URVJWQUwgPSAxICogNjAgKiAxMDAwOwoKICAgIGNvbnN0IExP",
