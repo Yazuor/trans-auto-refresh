@@ -2,7 +2,11 @@
 
 Automatyczne odswiezanie ofert frachtowych w Trans.eu przez Tampermonkey.
 
-Aktualna wersja: **4.49**
+Aktualna wersja: **4.50**
+
+### Poprawka 4.50
+
+Panel działa w kartach Trans.eu. Jedna karta odświeża oferty, a pozostałe pokazują wspólny stan i mogą przejąć pracę po jej zamknięciu. Po pięciu kolejnych błędach 404 dla różnych ofert skrypt pobiera świeżą listę. Druga taka seria wstrzymuje odświeżanie i pokazuje komunikat „Odśwież kartę Trans.eu”.
 
 ### Poprawka 4.49
 
@@ -20,7 +24,7 @@ Poprawiona obsługa odpowiedzi natywnego odświeżania: XHR, fetch, Promise oraz
 
    https://platform.trans.eu/freights/sent
 
-Skrypt uruchomi sie automatycznie na stronie dodanych frachtow.
+Panel uruchomi się automatycznie na stronach Trans.eu. Odświeżanie prowadzi jedna karta z dostępnym natywnym mechanizmem platformy.
 
 ## Co robi skrypt
 
@@ -72,7 +76,7 @@ Przykladowa konfiguracja:
 ```json
 {
   "enabled": true,
-  "latestVersion": "4.49",
+  "latestVersion": "4.50",
   "message": ""
 }
 ```
