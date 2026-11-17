@@ -2,7 +2,11 @@
 
 Automatyczne odswiezanie ofert frachtowych w Trans.eu przez Tampermonkey.
 
-Aktualna wersja: **4.50**
+Aktualna wersja: **4.51**
+
+### Poprawka 4.51
+
+Auto Refresh pobiera kolejne strony ofert w tle przez usługę Trans.eu. Po aktualizacji otwórz **Frachty → Dodane** i zostaw kartę otwartą.
 
 ### Poprawka 4.50
 
@@ -76,7 +80,7 @@ Przykladowa konfiguracja:
 ```json
 {
   "enabled": true,
-  "latestVersion": "4.50",
+  "latestVersion": "4.51",
   "message": ""
 }
 ```
